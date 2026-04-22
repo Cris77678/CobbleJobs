@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "package": "com.tuservidor.cobblejobs.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [],
+  "injectors": { "defaultRequire": 1 }
+}

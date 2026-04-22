@@ -1,0 +1,65 @@
+# Query: import net.minecraft.network.chat.Component;
+# Flags: RegExp
+# ContextLines: 1
+
+12 results - 12 files
+
+src/main/java/com/tuservidor/cobblejobs/command/FisherCommand.java:
+  16  import net.minecraft.commands.Commands;
+  17: import net.minecraft.network.chat.Component;\nimport com.tuservidor.cobblejobs.util.MessageUtil;
+  18  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/command/JobCommand.java:
+  11  import net.minecraft.commands.Commands;
+  12: import net.minecraft.network.chat.Component;
+  13  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/event/FishingHandler.java:
+  16  import net.minecraft.core.particles.ParticleTypes;
+  17: import net.minecraft.network.chat.Component;
+  18  import net.minecraft.server.MinecraftServer;
+
+src/main/java/com/tuservidor/cobblejobs/event/KillHandler.java:
+   9  import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+  10: import net.minecraft.network.chat.Component;
+  11  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/fishing/collection/FishCollection.java:
+  5  import com.tuservidor.cobblejobs.job.PlayerFisherData;
+  6: import net.minecraft.network.chat.Component;
+  7  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/fishing/leaderboard/LeaderboardManager.java:
+  5  import com.tuservidor.cobblejobs.job.PlayerFisherData;
+  6: import net.minecraft.network.chat.Component;
+  7  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/fishing/minigame/ActionReactMinigame.java:
+  4  import com.tuservidor.cobblejobs.util.MessageUtil;
+  5: import net.minecraft.network.chat.Component;
+  6  import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+
+src/main/java/com/tuservidor/cobblejobs/fishing/zone/DynamicFishingEvent.java:
+  6  import net.minecraft.core.particles.ParticleTypes;
+  7: import net.minecraft.network.chat.Component;
+  8  import net.minecraft.server.MinecraftServer;
+
+src/main/java/com/tuservidor/cobblejobs/gui/SellGui.java:
+  6  import com.tuservidor.cobblejobs.job.PlayerFisherData;
+  7: import net.minecraft.network.chat.Component;
+  8  import net.minecraft.server.level.ServerPlayer;
+
+src/main/java/com/tuservidor/cobblejobs/item/FishItem.java:
+  10  import net.minecraft.nbt.StringTag;
+  11: import net.minecraft.network.chat.Component;
+  12  import net.minecraft.world.item.ItemStack;
+
+src/main/java/com/tuservidor/cobblejobs/util/MessageUtil.java:
+  2  
+  3: import net.minecraft.network.chat.Component;
+  4  
+
+src/main/java/com/tuservidor/cobblejobs/zone/ButcherZoneManager.java:
+  8  import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+  9: import net.minecraft.network.chat.Component;
+  10  import net.minecraft.server.MinecraftServer;
