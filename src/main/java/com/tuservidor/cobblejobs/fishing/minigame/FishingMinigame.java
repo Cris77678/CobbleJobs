@@ -16,14 +16,8 @@ public class FishingMinigame {
         UUID uuid = player.getUUID();
         if (SESSIONS.containsKey(uuid)) return;
 
-        AbstractMinigameSession session;
-        
-        // 50/50 de probabilidad entre el de tensión y el de reacción
-        if (new Random().nextBoolean()) {
-            session = new ActionTensionMinigame(uuid, rarity, level, callback);
-        } else {
-            session = new ActionReactMinigame(uuid, rarity, level, callback);
-        }
+        // Ahora carga directamente el nuevo minijuego con fases combinadas (Clic + Shift)
+        AbstractMinigameSession session = new ActionCombinedMinigame(uuid, rarity, level, callback);
 
         SESSIONS.put(uuid, session);
         session.start(player); 
