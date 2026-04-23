@@ -12,6 +12,7 @@ import com.tuservidor.cobblejobs.job.PlayerJobData;
 import com.tuservidor.cobblejobs.job.PlayerFisherData;
 import com.tuservidor.cobblejobs.economy.EconomyBridge;
 import com.tuservidor.cobblejobs.fishing.collection.FishCollection;
+import com.tuservidor.cobblejobs.fishing.zone.DynamicFishingEvent;
 import com.tuservidor.cobblejobs.util.MessageUtil;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -34,6 +35,11 @@ public class JobCommand {
             .requires(CommandSourceStack::isPlayer)
             .executes(ctx -> leaveJob(ctx.getSource())));
 
+        // Comando RESTAURADO y MEJORADO
+        base.then(Commands.literal("info")
+            .requires(CommandSourceStack::isPlayer)
+            .executes(ctx -> showInfo(ctx.getSource())));
+
         base.then(Commands.literal("sell")
             .requires(CommandSourceStack::isPlayer)
             .executes(ctx -> openSell(ctx.getSource())));
@@ -54,7 +60,6 @@ public class JobCommand {
                 return 1;
             }));
 
-        // NUEVO: Comando para ver la colección de peces
         base.then(Commands.literal("collection")
             .requires(CommandSourceStack::isPlayer)
             .executes(ctx -> {
@@ -74,6 +79,16 @@ public class JobCommand {
             .then(Commands.argument("nivel", IntegerArgumentType.integer(1, 50))
                 .executes(ctx -> setLevel(ctx.getSource(), IntegerArgumentType.getInteger(ctx, "nivel")))));
 
+        // NUEVO: Comando para iniciar eventos
+        base.then(Commands.literal("startevent")
+            .requires(src -> src.hasPermission(2))
+            .then(Commands.argument("type", StringArgumentType.word())
+                .suggests((ctx, b) -> {
+                    b.suggest("frenzy"); b.suggest("blessing"); b.suggest("legendary");
+                    return b.buildFuture();
+                })
+                .executes(ctx -> startEvent(ctx.getSource(), StringArgumentType.getString(ctx, "type")))));
+
         base.then(Commands.literal("setzone")
             .requires(src -> src.hasPermission(2))
             .then(Commands.literal("butcher")
@@ -89,6 +104,18 @@ public class JobCommand {
                         .then(Commands.literal("pos1").executes(ctx -> setFisherZone(ctx.getSource(), StringArgumentType.getString(ctx, "id"), StringArgumentType.getString(ctx, "type"), true)))
                         .then(Commands.literal("pos2").executes(ctx -> setFisherZone(ctx.getSource(), StringArgumentType.getString(ctx, "id"), StringArgumentType.getString(ctx, "type"), false)))))));
 
+        base.then(Commands.literal("stopzone")
+            .requires(src -> src.hasPermission(2))
+            .then(Commands.argument("job", StringArgumentType.word())
+                .suggests((ctx, b) -> { b.suggest("butcher"); b.suggest("fisher"); return b.buildFuture(); })
+                .executes(ctx -> toggleZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), false))));
+
+        base.then(Commands.literal("startzone")
+            .requires(src -> src.hasPermission(2))
+            .then(Commands.argument("job", StringArgumentType.word())
+                .suggests((ctx, b) -> { b.suggest("butcher"); b.suggest("fisher"); return b.buildFuture(); })
+                .executes(ctx -> toggleZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), true))));
+
         base.then(Commands.literal("reload")
             .requires(src -> src.hasPermission(2))
             .executes(ctx -> {
@@ -99,6 +126,63 @@ public class JobCommand {
             }));
 
         dispatcher.register(base);
+    }
+
+    // ── Handlers ──
+
+    private static int showInfo(CommandSourceStack src) {
+        try {
+            ServerPlayer player = src.getPlayerOrException();
+            PlayerJobData.Job job = PlayerJobData.get(player.getUUID()).getActiveJob();
+
+            if (job == PlayerJobData.Job.FISHER) {
+                PlayerFisherData d = PlayerFisherData.get(player.getUUID());
+                double nextXp = d.xpForNextLevel();
+                String xpBar = buildXpBar(d.getXp(), nextXp, 20, d.getLevel());
+
+                player.sendSystemMessage(MessageUtil.literal(
+                    "§6§l══ 🎣 Estadísticas de Pesca ══\n" +
+                    "§fNivel: §e" + d.getLevel() + (d.getLevel() >= 50 ? " §6§l[MAX]" : "") + "\n" +
+                    "§fXP: §7" + xpBar + " §8(" + (int)d.getXp() + "/" + (int)nextXp + ")\n" +
+                    "§fPeces atrapados: §7" + d.getTotalFishCaught() + "\n" +
+                    "§6§l════════════════"
+                ));
+            } else {
+                String label = job == PlayerJobData.Job.BUTCHER ? "§c🗡 Carnicero" : "§7Ninguno";
+                JobsConfig cfg = JobsConfig.get();
+                String butcherStatus = cfg.isButcherEnabled() ? "§aActiva" : "§cDetenida";
+                String fisherStatus  = FisherConfig.get().getZones().isEmpty() ? "§cSin Zonas" : "§aActiva";
+                player.sendSystemMessage(MessageUtil.literal(
+                    "§6§l[CobbleJobs] §r§fTrabajo: " + label + "\n" +
+                    "§7Zona Carnicero: " + butcherStatus + " §7| Zona Pesca: " + fisherStatus
+                ));
+            }
+            return 1;
+        } catch (Exception e) { return 0; }
+    }
+
+    private static String buildXpBar(double current, double max, int length, int level) {
+        if (level >= 50) return "§6§l" + "█".repeat(length);
+        int reached = (int) ((current / max) * length);
+        return "§a" + "█".repeat(Math.max(0, reached)) + "§7" + "█".repeat(Math.max(0, length - reached));
+    }
+
+    private static int startEvent(CommandSourceStack src, String typeStr) {
+        try {
+            DynamicFishingEvent.EventType type = switch (typeStr.toLowerCase()) {
+                case "frenzy" -> DynamicFishingEvent.EventType.FRENZY;
+                case "blessing" -> DynamicFishingEvent.EventType.BLESSING;
+                case "legendary" -> DynamicFishingEvent.EventType.LEGENDARY;
+                default -> null;
+            };
+            if (type == null) {
+                src.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Evento desconocido. Usa: frenzy, blessing o legendary."));
+                return 0;
+            }
+            DynamicFishingEvent.startSpecificEvent(src.getServer(), type);
+            src.sendSystemMessage(MessageUtil.literal("§a[CobbleJobs] Has forzado el inicio del evento: " + type.name()));
+            return 1;
+        } catch (Exception e) { return 0; }
     }
 
     private static int setLevel(CommandSourceStack src, int level) {
@@ -195,6 +279,25 @@ public class JobCommand {
             
             FisherConfig.save();
             player.sendSystemMessage(MessageUtil.literal("§aZona de pesca '" + id + "' guardada."));
+            return 1;
+        } catch (Exception e) { return 0; }
+    }
+
+    private static int toggleZone(CommandSourceStack src, String jobName, boolean enable) {
+        try {
+            JobsConfig cfg = JobsConfig.get();
+            switch (jobName.toLowerCase()) {
+                case "butcher" -> cfg.setButcherEnabled(enable);
+                case "fisher"  -> cfg.setFisherEnabled(enable); 
+                default -> {
+                    src.sendSystemMessage(MessageUtil.literal("§cTrabajo desconocido: " + jobName));
+                    return 0;
+                }
+            }
+            JobsConfig.save();
+            String action = enable ? "§aactivada" : "§cdetenida";
+            src.sendSystemMessage(MessageUtil.literal(
+                "§6[CobbleJobs] §fZona global de §e" + jobName + " " + action + "§f."));
             return 1;
         } catch (Exception e) { return 0; }
     }
