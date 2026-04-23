@@ -263,7 +263,7 @@ public class JobCommand {
 
             // Busca si la zona ya existe en la configuración real de pesca, si no, la crea.
             com.tuservidor.cobblejobs.fishing.zone.FishingZone zone = cfg.getZones().stream()
-                .filter(z -> z.getId().equalsIgnoreCase(id)).findFirst().orElse(null);
+                .filter(fz -> fz.getId().equalsIgnoreCase(id)).findFirst().orElse(null);
                 
             if (zone == null) {
                 zone = new com.tuservidor.cobblejobs.fishing.zone.FishingZone(id, type);
