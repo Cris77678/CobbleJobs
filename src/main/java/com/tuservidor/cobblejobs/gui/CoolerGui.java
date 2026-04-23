@@ -23,7 +23,6 @@ import java.util.List;
 
 public class CoolerGui {
 
-    // ... openMainMenu y buyCooler permanecen igual ...
     public static void openMainMenu(ServerPlayer player) {
         PlayerFisherData data = PlayerFisherData.get(player.getUUID());
         FisherConfig cfg = FisherConfig.get();
@@ -60,11 +59,29 @@ public class CoolerGui {
         PlayerFisherData data = PlayerFisherData.get(player.getUUID());
         FisherConfig cfg = FisherConfig.get();
         double price = cfg.getCoolerPrices().get(coolerId);
-        if (data.getLevel() >= cfg.getCoolerLevels().get(coolerId) && EconomyBridge.withdraw(player, price)) {
+        int reqLevel = cfg.getCoolerLevels().get(coolerId);
+
+        // 1. Avisar si no tiene el nivel necesario
+        if (data.getLevel() < reqLevel) {
+            player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Necesitas nivel " + reqLevel + " de Pescador para comprar esta hielera."));
+            return;
+        }
+
+        // 2. Avisar si la economía no funciona
+        if (!EconomyBridge.isAvailable()) {
+            player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] La economía no está conectada. Contacta a un administrador."));
+            return;
+        }
+
+        // 3. Efectuar la compra
+        if (EconomyBridge.withdraw(player, price)) {
             data.setCoolersOwned(data.getCoolersOwned() + 1);
             data.getCoolers().add(new ArrayList<>());
             PlayerFisherData.save(player.getUUID());
-            openMainMenu(player);
+            openMainMenu(player); // Recarga el menú visualmente
+            player.sendSystemMessage(MessageUtil.literal("§a[CobbleJobs] ¡Has comprado una nueva hielera!"));
+        } else {
+            player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] No tienes suficiente dinero. Cuesta $" + price));
         }
     }
 
@@ -76,7 +93,7 @@ public class CoolerGui {
         for (int i = 0; i < contents.size() && i < 27; i++) {
             FishItem.FishData fd = contents.get(i);
             if (fd != null) {
-                // CORRECCIÓN 2: Ahora recreamos el ítem respetando el count guardado
+                // Ahora recreamos el ítem respetando el count guardado
                 inventory.setItem(i, FishItem.create(fd.species(), fd.weight(), fd.length(), fd.shiny(), fd.rarity(), fd.minigameMult(), fd.count()));
             }
         }
