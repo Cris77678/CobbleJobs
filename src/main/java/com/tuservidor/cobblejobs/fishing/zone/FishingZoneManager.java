@@ -44,8 +44,6 @@ public class FishingZoneManager {
                 double minZ = Math.min(zone.getZ1(), zone.getZ2());
                 double maxZ = Math.max(zone.getZ1(), zone.getZ2());
 
-                // CORRECCIÓN 1: Solo enviar partículas si el jugador está a menos de 32 bloques (antes 64)
-                // Esto reduce drásticamente el tráfico de red innecesario.
                 if (px < minX - 32 || px > maxX + 32 || pz < minZ - 32 || pz > maxZ + 32) {
                     continue;
                 }
@@ -63,11 +61,13 @@ public class FishingZoneManager {
         
         double y = Math.max(zone.getY1(), zone.getY2()) + 0.1;
 
+        // Aquí aplicamos el cambio a partículas mágicas y brillantes en la oscuridad:
+        // GLOW (calamar brillante) para las zonas especiales.
+        // SCRAPE (chispas de cobre) para las zonas normales (lago, océano, etc).
         var particle = zone.getType() == FishingZone.ZoneType.SPECIAL
-            ? ParticleTypes.END_ROD
-            : ParticleTypes.SPLASH;
+            ? ParticleTypes.GLOW
+            : ParticleTypes.SCRAPE;
 
-        // CORRECCIÓN 1.1: Densidad adaptativa. Menos partículas para zonas normales.
         int steps = (int) Math.min(40, (maxX - minX + maxZ - minZ) * 0.25);
         if (steps < 4) steps = 4;
 
@@ -85,7 +85,7 @@ public class FishingZoneManager {
             double t  = (double) i / steps;
             double px = x1 + t * (x2 - x1);
             double pz = z1 + t * (z2 - z1);
-            // Enviamos 1 sola partícula por punto para mantener la red limpia
+            // 1 sola partícula brillante por paso para no saturar la red
             player.serverLevel().sendParticles(player, type, false, px, y, pz, 1, 0, 0, 0, 0);
         }
     }
