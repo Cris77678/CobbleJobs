@@ -14,22 +14,6 @@ import com.tuservidor.cobblejobs.util.MessageUtil;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * /job — all player and admin commands.
- *
- *  Player:
- *   /job join <butcher|fisher>   — Take a job
- *   /job leave                   — Leave current job
- *   /job info                    — Show current job
- *   /job sell                    — Sell fish (fisher only)
- *   /job shop                    — Buy the custom fishing rod
- *
- *  Admin (OP level 2):
- *   /job setzone <job> pos1|pos2 — Define zone corners
- *   /job stopzone <job>          — Disable a zone (no new spawns/fishing)
- *   /job startzone <job>         — Re-enable a zone
- *   /job reload                  — Reload config from disk
- */
 public class JobCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -63,35 +47,47 @@ public class JobCommand {
             .then(Commands.literal("rod")
                 .executes(ctx -> buyRod(ctx.getSource()))));
 
-        // ── Admin commands ─────────────────────────────────────────────────
+        // ── Admin commands (Modificados para soportar IDs y Tipos) ────────
         base.then(Commands.literal("setzone")
             .requires(src -> src.hasPermission(2))
-            .then(Commands.argument("job", StringArgumentType.word())
-                .suggests((ctx, b) -> { b.suggest("butcher"); b.suggest("fisher"); return b.buildFuture(); })
-                .then(Commands.literal("pos1").executes(ctx ->
-                    setZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), true)))
-                .then(Commands.literal("pos2").executes(ctx ->
-                    setZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), false)))));
+            // Comando para el Carnicero (usa JobsConfig)
+            .then(Commands.literal("butcher")
+                .then(Commands.literal("pos1").executes(ctx -> setButcherZone(ctx.getSource(), true)))
+                .then(Commands.literal("pos2").executes(ctx -> setButcherZone(ctx.getSource(), false)))
+            )
+            // Comando para el Pescador (usa FisherConfig y requiere ID y Tipo)
+            .then(Commands.literal("fisher")
+                .then(Commands.argument("id", StringArgumentType.word())
+                    .then(Commands.argument("type", StringArgumentType.word())
+                        .suggests((ctx, b) -> { 
+                            b.suggest("LAKE"); b.suggest("OCEAN"); b.suggest("RIVER"); b.suggest("SPECIAL"); 
+                            return b.buildFuture(); 
+                        })
+                        .then(Commands.literal("pos1").executes(ctx -> setFisherZone(ctx.getSource(), StringArgumentType.getString(ctx, "id"), StringArgumentType.getString(ctx, "type"), true)))
+                        .then(Commands.literal("pos2").executes(ctx -> setFisherZone(ctx.getSource(), StringArgumentType.getString(ctx, "id"), StringArgumentType.getString(ctx, "type"), false)))
+                    )
+                )
+            )
+        );
 
         base.then(Commands.literal("stopzone")
             .requires(src -> src.hasPermission(2))
             .then(Commands.argument("job", StringArgumentType.word())
                 .suggests((ctx, b) -> { b.suggest("butcher"); b.suggest("fisher"); return b.buildFuture(); })
-                .executes(ctx -> toggleZone(ctx.getSource(),
-                    StringArgumentType.getString(ctx, "job"), false))));
+                .executes(ctx -> toggleZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), false))));
 
         base.then(Commands.literal("startzone")
             .requires(src -> src.hasPermission(2))
             .then(Commands.argument("job", StringArgumentType.word())
                 .suggests((ctx, b) -> { b.suggest("butcher"); b.suggest("fisher"); return b.buildFuture(); })
-                .executes(ctx -> toggleZone(ctx.getSource(),
-                    StringArgumentType.getString(ctx, "job"), true))));
+                .executes(ctx -> toggleZone(ctx.getSource(), StringArgumentType.getString(ctx, "job"), true))));
 
         base.then(Commands.literal("reload")
             .requires(src -> src.hasPermission(2))
             .executes(ctx -> {
                 JobsConfig.load();
-                ctx.getSource().sendSystemMessage(MessageUtil.literal("§a[CobbleJobs] Config recargada."));
+                com.tuservidor.cobblejobs.config.FisherConfig.load();
+                ctx.getSource().sendSystemMessage(MessageUtil.literal("§a[CobbleJobs] Configs recargadas."));
                 return 1;
             }));
 
@@ -151,7 +147,7 @@ public class JobCommand {
             };
             JobsConfig cfg = JobsConfig.get();
             String butcherStatus = cfg.isButcherEnabled() ? "§aActiva" : "§cDetenida";
-            String fisherStatus  = cfg.isFisherEnabled()  ? "§aActiva" : "§cDetenida";
+            String fisherStatus  = com.tuservidor.cobblejobs.config.FisherConfig.get().getZones().isEmpty() ? "§cSin Zonas" : "§aActiva";
             player.sendSystemMessage(MessageUtil.literal(
                 "§6§l[CobbleJobs] §r§fTrabajo: " + label + "\n" +
                 "§7Zona Carnicero: " + butcherStatus + " §7| Zona Pesca: " + fisherStatus));
@@ -177,7 +173,6 @@ public class JobCommand {
         } catch (Exception e) { return 0; }
     }
 
-    /** /job shop — buy the custom fishing rod */
     private static int openShop(CommandSourceStack src) {
         try {
             ServerPlayer player = src.getPlayerOrException();
@@ -212,7 +207,6 @@ public class JobCommand {
                 player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Solo los §bPescadores §cpueden comprar la caña."));
                 return 0;
             }
-            // Check if player already has one
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 if (FishItem.isCustomRod(player.getInventory().getItem(i))) {
                     player.sendSystemMessage(MessageUtil.literal("§e[CobbleJobs] Ya tienes una Caña Pokémon."));
@@ -223,7 +217,6 @@ public class JobCommand {
                 player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Economía no disponible."));
                 return 0;
             }
-            // Deduct price and give rod
             EconomyBridge.withdraw(player, com.tuservidor.cobblejobs.config.FisherConfig.get().getRodPrice());
             ItemStack rod = FishItem.createCustomRod();
             if (!player.addItem(rod)) player.drop(rod, false);
@@ -236,35 +229,56 @@ public class JobCommand {
 
     // ── Admin handlers ─────────────────────────────────────────────────────
 
-    private static int setZone(CommandSourceStack src, String jobName, boolean isPos1) {
+    private static int setButcherZone(CommandSourceStack src, boolean isPos1) {
         try {
             ServerPlayer player = src.getPlayerOrException();
-            JobsConfig cfg = JobsConfig.get();
+            JobsConfig.ZoneConfig zone = com.tuservidor.cobblejobs.config.JobsConfig.get().getButcherZone();
             double x = player.getX(), y = player.getY(), z = player.getZ();
-
-            JobsConfig.ZoneConfig zone = switch (jobName.toLowerCase()) {
-                case "butcher" -> cfg.getButcherZone();
-                case "fisher"  -> cfg.getFisherZone();
-                default -> null;
-            };
-            if (zone == null) {
-                player.sendSystemMessage(MessageUtil.literal("§cTrabajo desconocido: " + jobName));
-                return 0;
-            }
 
             if (isPos1) zone.set(x, y, z, zone.getX2(), zone.getY2(), zone.getZ2());
             else {
                 zone.set(zone.getX1(), zone.getY1(), zone.getZ1(), x, y, z);
-                zone.setConfigured(true); // Mark ready when pos2 is set
+                zone.setConfigured(true);
             }
 
-            JobsConfig.save();
+            com.tuservidor.cobblejobs.config.JobsConfig.save();
+            player.sendSystemMessage(MessageUtil.literal("§a[CobbleJobs] Zona de carnicero " + (isPos1 ? "pos1" : "pos2") + " guardada."));
+            return 1;
+        } catch (Exception e) { return 0; }
+    }
+
+    private static int setFisherZone(CommandSourceStack src, String id, String typeStr, boolean isPos1) {
+        try {
+            ServerPlayer player = src.getPlayerOrException();
+            com.tuservidor.cobblejobs.config.FisherConfig cfg = com.tuservidor.cobblejobs.config.FisherConfig.get();
+            double x = player.getX(), y = player.getY(), z = player.getZ();
+
+            com.tuservidor.cobblejobs.fishing.zone.FishingZone.ZoneType type;
+            try { 
+                type = com.tuservidor.cobblejobs.fishing.zone.FishingZone.ZoneType.valueOf(typeStr.toUpperCase()); 
+            } catch (Exception e) { 
+                player.sendSystemMessage(MessageUtil.literal("§cTipo inválido. Usa LAKE, OCEAN, RIVER o SPECIAL.")); 
+                return 0; 
+            }
+
+            // Busca si la zona ya existe en la configuración real de pesca, si no, la crea.
+            com.tuservidor.cobblejobs.fishing.zone.FishingZone zone = cfg.getZones().stream()
+                .filter(z -> z.getId().equalsIgnoreCase(id)).findFirst().orElse(null);
+                
+            if (zone == null) {
+                zone = new com.tuservidor.cobblejobs.fishing.zone.FishingZone(id, type);
+                cfg.getZones().add(zone);
+            } else {
+                zone.setType(type); // Actualiza el tipo por si decidiste cambiarlo
+            }
+
+            if (isPos1) zone.setPos1(x, y, z);
+            else zone.setPos2(x, y, z);
+
+            com.tuservidor.cobblejobs.config.FisherConfig.save();
             String corner = isPos1 ? "pos1" : "pos2";
-            player.sendSystemMessage(MessageUtil.literal(
-                "§a[CobbleJobs] Zona §e" + jobName + " §a— " + corner +
-                " §fguardada en §e" + String.format("%.1f, %.1f, %.1f", x, y, z)));
-            if (!isPos1) player.sendSystemMessage(MessageUtil.literal(
-                "§a✔ Zona configurada y lista."));
+            player.sendSystemMessage(MessageUtil.literal("§a[Pesca] Zona §e" + id + " (" + type.name() + ") §a— " + corner + " §fguardada."));
+            if (zone.isConfigured()) player.sendSystemMessage(MessageUtil.literal("§a✔ Zona configurada y lista."));
             return 1;
         } catch (Exception e) { return 0; }
     }
@@ -274,7 +288,7 @@ public class JobCommand {
             JobsConfig cfg = JobsConfig.get();
             switch (jobName.toLowerCase()) {
                 case "butcher" -> cfg.setButcherEnabled(enable);
-                case "fisher"  -> cfg.setFisherEnabled(enable);
+                case "fisher"  -> cfg.setFisherEnabled(enable); // Nota: En tu JobsConfig original tenías esto
                 default -> {
                     src.sendSystemMessage(MessageUtil.literal("§cTrabajo desconocido: " + jobName));
                     return 0;
@@ -283,7 +297,7 @@ public class JobCommand {
             JobsConfig.save();
             String action = enable ? "§aactivada" : "§cdetenida";
             src.sendSystemMessage(MessageUtil.literal(
-                "§6[CobbleJobs] §fZona §e" + jobName + " " + action + "§f."));
+                "§6[CobbleJobs] §fZona global de §e" + jobName + " " + action + "§f."));
             return 1;
         } catch (Exception e) { return 0; }
     }
