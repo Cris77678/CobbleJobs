@@ -11,6 +11,7 @@ import com.tuservidor.cobblejobs.item.FishItem;
 import com.tuservidor.cobblejobs.job.PlayerJobData;
 import com.tuservidor.cobblejobs.job.PlayerFisherData;
 import com.tuservidor.cobblejobs.economy.EconomyBridge;
+import com.tuservidor.cobblejobs.fishing.collection.FishCollection;
 import com.tuservidor.cobblejobs.util.MessageUtil;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -50,6 +51,20 @@ public class JobCommand {
             .requires(CommandSourceStack::isPlayer)
             .executes(ctx -> {
                 com.tuservidor.cobblejobs.gui.CoolerGui.openMainMenu(ctx.getSource().getPlayerOrException());
+                return 1;
+            }));
+
+        // NUEVO: Comando para ver la colección de peces
+        base.then(Commands.literal("collection")
+            .requires(CommandSourceStack::isPlayer)
+            .executes(ctx -> {
+                ServerPlayer p = ctx.getSource().getPlayerOrException();
+                PlayerFisherData d = PlayerFisherData.get(p.getUUID());
+                if (!d.isFisher()) {
+                    p.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Solo los §bPescadores §cpueden ver su colección."));
+                    return 0;
+                }
+                FishCollection.showCollection(p, d);
                 return 1;
             }));
 
