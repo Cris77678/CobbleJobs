@@ -65,6 +65,7 @@ public class FishingZone {
     public double getY2() { return y2; } public double getZ2() { return z2; }
 
     public void setId(String id)             { this.id = id; }
+    public void setType(ZoneType type)       { this.type = type; }
     public void setEnabled(boolean e)        { this.enabled = e; }
     public void setFishTable(List<ZoneFishEntry> t) { this.fishTable = t; }
     public void setShowParticles(boolean b)  { this.showParticles = b; }
