@@ -47,6 +47,11 @@ public class JobCommand {
             .then(Commands.literal("rod")
                 .executes(ctx -> buyRod(ctx.getSource()))));
 
+        // Nuevo comando añadido para las hieleras
+        base.then(Commands.literal("cooler")
+            .requires(CommandSourceStack::isPlayer)
+            .executes(ctx -> openCooler(ctx.getSource())));
+
         // ── Admin commands (Modificados para soportar IDs y Tipos) ────────
         base.then(Commands.literal("setzone")
             .requires(src -> src.hasPermission(2))
@@ -223,6 +228,24 @@ public class JobCommand {
             player.sendSystemMessage(MessageUtil.literal(
                 "§a[CobbleJobs] §f¡Compraste la §bCaña Pokémon §fpor §a$" +
                 String.format("%.0f", com.tuservidor.cobblejobs.config.FisherConfig.get().getRodPrice()) + "§f!"));
+            return 1;
+        } catch (Exception e) { return 0; }
+    }
+
+    // Nuevo handler para las hieleras
+    private static int openCooler(CommandSourceStack src) {
+        try {
+            ServerPlayer player = src.getPlayerOrException();
+            PlayerJobData.Job job = PlayerJobData.get(player.getUUID()).getActiveJob();
+            
+            // Verificamos que sea Pescador
+            if (job != PlayerJobData.Job.FISHER) {
+                player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] Solo los §bPescadores §cpueden usar hieleras."));
+                return 0;
+            }
+            
+            // Abrimos el menú principal de hieleras
+            com.tuservidor.cobblejobs.gui.CoolerGui.openMainMenu(player);
             return 1;
         } catch (Exception e) { return 0; }
     }
