@@ -62,8 +62,6 @@ public class DynamicFishingEvent {
 
         if (activeEvent == null) {
             if (nextEventTick < 0) {
-                // CORRECCIÓN 4: Al reiniciar el servidor, el primer evento siempre ocurrirá 
-                // rápido (5 minutos / 6000 ticks) para mantener a la comunidad activa.
                 nextEventTick = now + 6000;
                 CobbleJobs.LOGGER.info("[CobbleJobs] Primer evento de la sesión programado en 5 minutos.");
             } else if (now >= nextEventTick) {
@@ -96,7 +94,7 @@ public class DynamicFishingEvent {
         );
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (com.tuservidor.cobblejobs.job.PlayerFisherData.get(player.getUUID()).isFisher()) {
+            if (com.tuservidor.cobblejobs.job.PlayerJobData.get(player.getUUID()).getActiveJob() == com.tuservidor.cobblejobs.job.PlayerJobData.Job.FISHER) {
                 player.sendSystemMessage(msg);
                 player.serverLevel().playSound(null,
                     player.getX(), player.getY(), player.getZ(),
@@ -116,7 +114,7 @@ public class DynamicFishingEvent {
 
         Component msg = MessageUtil.literal("§8[CobbleJobs] §7El evento de pesca ha terminado.");
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (com.tuservidor.cobblejobs.job.PlayerFisherData.get(player.getUUID()).isFisher()) {
+            if (com.tuservidor.cobblejobs.job.PlayerJobData.get(player.getUUID()).getActiveJob() == com.tuservidor.cobblejobs.job.PlayerJobData.Job.FISHER) {
                 player.sendSystemMessage(msg);
             }
         }
