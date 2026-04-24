@@ -13,7 +13,7 @@ public class JobsConfig {
 
     private static JobsConfig INSTANCE = null;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_FILE = Paths.get("config", "cobblejobs", "config.json");
+    private static final Path CONFIG_FILE = Paths.get("config", "cobblejobs", "jobs_config.json");
 
     // Butcher
     private ZoneConfig butcherZone = new ZoneConfig();
