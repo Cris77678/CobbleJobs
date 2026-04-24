@@ -24,7 +24,7 @@ public class PlayerFisherData {
     private int level  = 1;
     private double xp  = 0;
 
-    // CORRECCIÓN 1: Evitar que el jugador pesque mientras ya está en un minijuego
+    // Evitar que el jugador pesque mientras ya está en un minijuego
     private transient boolean minigameActive = false;
 
     private int coolersOwned = 0;
@@ -110,7 +110,7 @@ public class PlayerFisherData {
             try {
                 Path dir = Paths.get("config", "cobblejobs", "players");
                 Files.createDirectories(dir);
-                try (Writer w = Files.newBufferedWriter(dir.resolve(uuid + ".json"))) {
+                try (Writer w = Files.newBufferedWriter(dir.resolve(uuid + "_fisher.json"))) {
                     w.write(jsonSnapshot);
                 }
             } catch (Exception e) {
@@ -120,7 +120,7 @@ public class PlayerFisherData {
     }
 
     private static PlayerFisherData load(UUID uuid) {
-        Path file = Paths.get("config", "cobblejobs", "players", uuid + ".json");
+        Path file = Paths.get("config", "cobblejobs", "players", uuid + "_fisher.json");
         if (Files.exists(file)) {
             try (Reader r = Files.newBufferedReader(file)) {
                 PlayerFisherData d = GSON.fromJson(r, PlayerFisherData.class);
