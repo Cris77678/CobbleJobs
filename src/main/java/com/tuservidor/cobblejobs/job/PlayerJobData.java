@@ -34,7 +34,6 @@ public class PlayerJobData {
         PlayerJobData data = CACHE.get(uuid);
         if (data == null) return;
         
-        // CORRECCIÓN 3: Guardado asíncrono thread-safe
         String jsonSnapshot;
         synchronized (data) {
             jsonSnapshot = GSON.toJson(data);
@@ -44,7 +43,7 @@ public class PlayerJobData {
             try {
                 Path dir = Paths.get("config", "cobblejobs", "players");
                 Files.createDirectories(dir);
-                Path file = dir.resolve(uuid + ".json");
+                Path file = dir.resolve(uuid + "_job.json");
                 try (Writer w = Files.newBufferedWriter(file)) {
                     w.write(jsonSnapshot);
                 }
@@ -55,7 +54,7 @@ public class PlayerJobData {
     }
 
     private static PlayerJobData load(UUID uuid) {
-        Path file = Paths.get("config", "cobblejobs", "players", uuid + ".json");
+        Path file = Paths.get("config", "cobblejobs", "players", uuid + "_job.json");
         if (Files.exists(file)) {
             try (Reader r = Files.newBufferedReader(file)) {
                 PlayerJobData d = GSON.fromJson(r, PlayerJobData.class);
