@@ -10,6 +10,7 @@ import com.tuservidor.cobblejobs.fishing.zone.FishingZone;
 import com.tuservidor.cobblejobs.fishing.zone.FishingZoneManager;
 import com.tuservidor.cobblejobs.item.FishItem;
 import com.tuservidor.cobblejobs.job.PlayerFisherData;
+import com.tuservidor.cobblejobs.job.PlayerJobData; // Importación añadida para leer el trabajo real
 import com.tuservidor.cobblejobs.util.FisherTips;
 import com.tuservidor.cobblejobs.util.MessageUtil;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -52,7 +53,11 @@ public class FishingHandler {
             UUID uuid = player.getUUID();
             PlayerFisherData data = PlayerFisherData.get(uuid);
             
-            if (!data.isFisher() || data.isMinigameActive()) { clearState(uuid); continue; }
+            // CORRECCIÓN: Comprobar el trabajo desde PlayerJobData en lugar de isFisher()
+            if (PlayerJobData.get(uuid).getActiveJob() != PlayerJobData.Job.FISHER || data.isMinigameActive()) { 
+                clearState(uuid); 
+                continue; 
+            }
             
             FishingHook hook = player.fishing;
             if (hook == null) { clearState(uuid); continue; }
@@ -83,7 +88,6 @@ public class FishingHandler {
                     CATCH_AT.remove(uuid); continue;
                 }
 
-                // CORRECCIÓN: Nombre de método correcto 'getItemEnchantmentLevel' para 1.21
                 int lureLevel = EnchantmentHelper.getItemEnchantmentLevel(
                     player.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
                     .getOrThrow(Enchantments.LURE), activeRod);
