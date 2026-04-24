@@ -15,7 +15,7 @@ public class FisherConfig {
 
     private static FisherConfig INSTANCE = null;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_FILE = Paths.get("config", "cobblejobs", "config.json");
+    private static final Path CONFIG_FILE = Paths.get("config", "cobblejobs", "fisher_config.json");
 
     private List<FishingZone> zones = defaultZones();
     private double rodPrice = 500.0;
