@@ -10,7 +10,7 @@ import com.tuservidor.cobblejobs.fishing.zone.FishingZone;
 import com.tuservidor.cobblejobs.fishing.zone.FishingZoneManager;
 import com.tuservidor.cobblejobs.item.FishItem;
 import com.tuservidor.cobblejobs.job.PlayerFisherData;
-import com.tuservidor.cobblejobs.job.PlayerJobData; // Importación añadida para leer el trabajo real
+import com.tuservidor.cobblejobs.job.PlayerJobData;
 import com.tuservidor.cobblejobs.util.FisherTips;
 import com.tuservidor.cobblejobs.util.MessageUtil;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -53,7 +53,6 @@ public class FishingHandler {
             UUID uuid = player.getUUID();
             PlayerFisherData data = PlayerFisherData.get(uuid);
             
-            // CORRECCIÓN: Comprobar el trabajo desde PlayerJobData en lugar de isFisher()
             if (PlayerJobData.get(uuid).getActiveJob() != PlayerJobData.Job.FISHER || data.isMinigameActive()) { 
                 clearState(uuid); 
                 continue; 
@@ -102,17 +101,23 @@ public class FishingHandler {
 
             Long fireAt = CATCH_AT.get(uuid);
             if (fireAt != null && now >= fireAt && !hook.isRemoved()) {
-                clearState(uuid); hook.discard(); 
-                fireCatch(player, data, zone, now, FisherConfig.get(), activeRod, isMainHand);
+                clearState(uuid); 
+                // CORRECCIÓN: Se quitó el hook.discard() de aquí y se pasa el objeto hook a fireCatch
+                fireCatch(player, data, zone, now, FisherConfig.get(), activeRod, isMainHand, hook);
             } else if (now % 40 == 0 && ACTIVE_TIPS.containsKey(uuid)) {
                 FisherTips.sendTip(player, ACTIVE_TIPS.get(uuid));
             }
         }
     }
 
-    private static void fireCatch(ServerPlayer player, PlayerFisherData data, FishingZone zone, long now, FisherConfig cfg, ItemStack rod, boolean isMainHand) {
+    // CORRECCIÓN: Añadido "FishingHook hook" a los parámetros del método
+    private static void fireCatch(ServerPlayer player, PlayerFisherData data, FishingZone zone, long now, FisherConfig cfg, ItemStack rod, boolean isMainHand, FishingHook hook) {
         FishingZone.ZoneFishEntry entry = rollFish(zone, data.getLevel());
-        if (entry == null) return;
+        if (entry == null) {
+            // Seguridad: Si la tabla de pesca está vacía, se debe eliminar el anzuelo
+            if (hook != null && !hook.isRemoved()) hook.discard();
+            return;
+        }
         
         data.setMinigameActive(true);
 
@@ -120,6 +125,11 @@ public class FishingHandler {
             data.setMinigameActive(false);
             data.setLastFishTick(player.serverLevel().getGameTime());
             
+            // CORRECCIÓN: El anzuelo se elimina del mundo AQUÍ, cuando el minijuego termina.
+            if (hook != null && !hook.isRemoved()) {
+                hook.discard();
+            }
+
             if (result == FishingMinigame.MinigameResult.FAIL) { 
                 player.sendSystemMessage(MessageUtil.literal("§c[CobbleJobs] ¡El pez escapó!")); 
                 return; 
